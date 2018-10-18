@@ -7,6 +7,9 @@ from scipy.optimize       import curve_fit
 from numpy                import exp, log, log10, array, dot, argmax, concatenate, power, arange, loadtxt
 from numpy.random         import shuffle, normal, random, choice
 from sklearn.metrics      import r2_score
+import matplotlib
+matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams['text.latex.unicode'] = True
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
@@ -16,7 +19,7 @@ def germibeta(r, alfa, beta, A, N, base=10):
     den = power(r,alfa)
     return fac*num/den
 
-def graf_datos(y, arr, titulo,nomf):
+def graf_datos(y, arr, titulo, nomf):
     """
     Grafica los datos en y
     y el ajuste en arr
@@ -28,9 +31,9 @@ def graf_datos(y, arr, titulo,nomf):
     Y = germibeta(*params)
     fig = plt.figure()
     plt.semilogy(range(1,N+1),y,'.', R,Y)
-    plt.xlabel('Rango')
-    plt.ylabel(u'Tamaños de islas (frecs)')
-    plt.title(titulo + "\n(a,b):({0:.2f},{1:.2f}), r2 {2:.4f}: ".format(a,b,r2))
+    plt.xlabel(r'\textbf{Rango}')
+    plt.ylabel(r'\textbf{Frecs (log)}')
+    plt.title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
     plt.savefig(nomf+'.png')
     del(fig)
 
