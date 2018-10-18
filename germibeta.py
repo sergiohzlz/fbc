@@ -16,6 +16,24 @@ def germibeta(r, alfa, beta, A, N, base=10):
     den = power(r,alfa)
     return fac*num/den
 
+def graf_datos(y, arr, titulo,nomf):
+    """
+    Grafica los datos en y
+    y el ajuste en arr
+    """
+    a,b,A,N,r2 = arr
+    N = int(N)
+    R = arange(1,N+1,0.05)
+    params = [R,a,b,A,N]
+    Y = germibeta(*params)
+    fig = plt.figure()
+    plt.semilogy(range(1,N+1),y,'.', R,Y)
+    plt.xlabel('Rango')
+    plt.ylabel(u'Tamaños de islas (frecs)')
+    plt.title(titulo + "\n(a,b):({0:.2f},{1:.2f}), r2 {2:.4f}: ".format(a,b,r2))
+    plt.savefig(nomf+'.png')
+    del(fig)
+
 def ajuste(F, verbose=False):
     N = len(F)
     R = range(1,N+1)
@@ -77,7 +95,10 @@ if __name__ =='__main__':
     N = len(f)
 
     if verbose: print("Líneas leídas {0}".format(N))
-    popt, r2 = ajuste(f[:,1], verbose=verbose)
+    if(columna==0):
+        popt, r2 = ajuste(f, verbose=verbose)
+    elif(columna>0):
+        popt, r2 = ajuste(f[:,columna], verbose=verbose)
     alfa, beta = popt[:2]
     A = popt[2]
     if(verbose):
