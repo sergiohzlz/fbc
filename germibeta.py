@@ -4,7 +4,7 @@
 import sys, getopt
 from scipy.stats          import linregress
 from scipy.optimize       import curve_fit
-from numpy                import exp, log, log10, array, dot, argmax, concatenate, power, arange, loadtxt
+from numpy                import exp, log, log10, array, dot, argmax, concatenate, power, arange, loadtxt, sqrt, diag
 from numpy.random         import shuffle, normal, random, choice
 from sklearn.metrics      import r2_score
 import matplotlib
@@ -54,9 +54,9 @@ def ajuste(F, verbose=False):
     r2 = r2_score( F, modelo(array(R), popt[0], popt[1], popt[2]) )
     if(verbose):
         print(str(popt))
-        print(str(pcov))
+        print(str(sqrt(diag(pcov))))
         print(str(r2))
-    return popt , r2
+    return popt , pcov, r2
 
 
 def uso():
@@ -99,17 +99,19 @@ if __name__ =='__main__':
 
     if verbose: print("Líneas leídas {0}".format(N))
     if(columna==0):
-        popt, r2 = ajuste(f, verbose=verbose)
+        popt, pcov, r2 = ajuste(f)
     elif(columna>0):
-        popt, r2 = ajuste(f[:,columna], verbose=verbose)
+        popt, pcov, r2 = ajuste(f[:,columna])
     alfa, beta = popt[:2]
     A = popt[2]
+    error = sqrt(diag(pcov))
     if(verbose):
         print("Resultado")
         print("Archivo {0} con {1} rangos".format(archivo,N))
         print("A {0}".format(A))
         print("alfa, beta : ({0},{1})".format(alfa,beta))
         print("R2 {0}".format(r2))
+        print("Error {0}".format(error))
     else:
         V = ','.join(map(str,[ archivo, A, alfa, beta, N, r2]))
         print(V)
