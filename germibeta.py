@@ -37,7 +37,39 @@ def graf_datos(y, arr, titulo, nomf):
     plt.savefig(nomf+'.png')
     del(fig)
 
+def genera_individuos(largo,n):
+    """
+    GA.
+    Genera N individuos con un cromosoma de largo=largo
+    """
+    cromosoma = lambda largo: [np.random.choice([0,1]) for i in range(largo)]
+    P = []
+    for i in range(n):
+        P.append(cromosoma(largo))
+    return P
+
+def genera_x0(F):
+    """
+    Toma la distribución F y genera a través de una
+    regresión lineal el punto x0 que será usado para
+    otros métodos.
+    """
+    N = len(F)
+    R = range(1,N+1)
+    r = arange(1,(N+1), 0.01)
+    lgR, lgF = log10(R), log10(F)
+    V = linregress(lgR, lgF)
+    if(verbose):
+        print(str(V))
+    m = abs(V.slope)
+    b = abs(V.intercept)
+    return array([b, abs(m), abs(m)])
+
 def ajuste(F, verbose=False):
+    """
+    Ajusta no-lineal de los datos en F
+    Se usa Levenberg-Marquadt para el ajuste
+    """
     N = len(F)
     R = range(1,N+1)
     r = arange(1,(N+1), 0.01)
