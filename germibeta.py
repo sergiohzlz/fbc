@@ -1,12 +1,15 @@
 #!/usr/bin/python
 #coding:utf8
 
+import os
 import sys, getopt
-from scipy.stats          import linregress
-from scipy.optimize       import curve_fit
-from numpy                import exp, log, log10, array, dot, argmax, concatenate, power, arange, loadtxt, sqrt, diag
-from numpy.random         import shuffle, normal, random, choice
-import matplotlib
+
+from scipy.stats      import linregress
+from scipy.optimize   import curve_fit
+from numpy            import exp, log, log10, array,  power, arange, loadtxt, sqrt, diag
+from numpy.random     import normal, random, choice
+from sklearn.metrics  import r2_score
+
 # matplotlib.rcParams['text.usetex'] = True
 # matplotlib.rcParams['text.latex.unicode'] = True
 import matplotlib.pyplot as plt
@@ -184,6 +187,10 @@ if __name__ =='__main__':
     for opt,arg in opts:
         if opt in ('-i','--input'):
             archivo = arg
+            if(os.path.exists(archivo)):
+                print(f"Usando {archivo}")
+            else:
+                print("No se encuentra el archivo")
         elif opt in ('-v','--verbose'):
             verbose = True
         elif opt in ('-c','--columna'):
