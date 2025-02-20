@@ -21,11 +21,23 @@ class Germibeta(object):
         self.f = loadtxt(archivo,delimiter=sep)
         self.N = len(self.f)
     
-    def germibeta(self, r, alfa, beta, A, N, base=10):
+    def germibeta(self, 
+                  r : int,
+                  alfa : float, 
+                  beta : float, 
+                  A, 
+                  N, base=10) -> float:
         """ 
         Fase final para hacer el cálculo de  la 
         distribución usando los valores en los parámetros
 
+        Parameters:
+        r       : arreglo de enteros
+        alfa    : exponente del denominador
+        beta    : exponente del numerador
+        A       : Constante de normalización
+        N       : entero con la cantidad de rangos
+        base=10
         Returns:
         Lista de valores con los valores asignados en el parámetro
         """
@@ -34,7 +46,7 @@ class Germibeta(object):
         den = power(r,alfa)
         return fac*num/den
 
-    def genera_x0(self, F):
+    def genera_x0(self, verbose=True):
         """
         Toma la distribución F y genera a través de una
         regresión lineal el punto x0 que será usado para
