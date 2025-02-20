@@ -6,12 +6,76 @@ from scipy.stats          import linregress
 from scipy.optimize       import curve_fit
 from numpy                import exp, log, log10, array, dot, argmax, concatenate, power, arange, loadtxt, sqrt, diag
 from numpy.random         import shuffle, normal, random, choice
-from sklearn.metrics      import r2_score
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
-matplotlib.rcParams['text.latex.unicode'] = True
+# matplotlib.rcParams['text.usetex'] = True
+# matplotlib.rcParams['text.latex.unicode'] = True
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
+
+class Germibeta(object):
+
+    def carga_archivo(self, archivo, sep=","):
+        """
+        Carga el archivo en el parámetro
+        """
+        self.f = loadtxt(archivo,delimiter=sep)
+        self.N = len(self.f)
+    
+    def germibeta(self, r, alfa, beta, A, N, base=10):
+        """ 
+        Fase final para hacer el cálculo de  la 
+        distribución usando los valores en los parámetros
+
+        Returns:
+        Lista de valores con los valores asignados en el parámetro
+        """
+        fac = base**A
+        num = power((N+1-r),beta)
+        den = power(r,alfa)
+        return fac*num/den
+
+    def genera_x0(self, F):
+        """
+        Toma la distribución F y genera a través de una
+        regresión lineal el punto x0 que será usado para
+        otros métodos.
+        """
+        N = len(F)
+        R = range(1,N+1)
+        # r = arange(1,(N+1), 0.01)
+        lgR, lgF = log10(R), log10(F)
+        V = linregress(lgR, lgF)
+        if(verbose):
+            print(str(V))
+        m = abs(V.slope)
+        b = abs(V.intercept)
+        return array([b, abs(m), abs(m)])
+
+    def ajuste(self, F, verbose=False):
+        """
+        Ajusta no-lineal de los datos en F
+        Se usa Levenberg-Marquadt para el ajuste
+        """
+        N = len(F)
+        R = range(1,N+1)
+        r = arange(1,(N+1), 0.01)
+        lgR, lgF = log10(R), log10(F)
+        V = linregress(lgR, lgF)
+        if(verbose):
+            print(str(V))
+        m = abs(V.slope)
+        b = abs(V.intercept)
+
+        x0 = array( [b, abs(m), abs(m)] )
+        modelo = lambda r,x,y,z : germibeta(r, x, y, z, N)
+        popt, pcov = curve_fit( modelo, R, F, x0, sigma=F, method='lm')
+        r2 = r2_score( F, modelo(array(R), popt[0], popt[1], popt[2]) )
+        if(verbose):
+            print(str(popt))
+            print(str(sqrt(diag(pcov))))
+            print(str(r2))
+        return popt , pcov, r2
+
 
 def germibeta(r, alfa, beta, A, N, base=10):
     fac = base**A
@@ -19,30 +83,12 @@ def germibeta(r, alfa, beta, A, N, base=10):
     den = power(r,alfa)
     return fac*num/den
 
-def graf_datos(y, arr, titulo, nomf):
-    """
-    Grafica los datos en y
-    y el ajuste en arr
-    """
-    a,b,A,N,r2 = arr
-    N = int(N)
-    R = arange(1,N+1,0.05)
-    params = [R,a,b,A,N]
-    Y = germibeta(*params)
-    fig = plt.figure()
-    plt.semilogy(range(1,N+1),y,'.', R,Y)
-    plt.xlabel(r'\textbf{Rango}')
-    plt.ylabel(r'\textbf{Frecs (log)}')
-    plt.title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
-    plt.savefig(nomf+'.png')
-    del(fig)
-
 def genera_individuos(largo,n):
     """
     GA.
     Genera N individuos con un cromosoma de largo=largo
     """
-    cromosoma = lambda largo: [np.random.choice([0,1]) for i in range(largo)]
+    cromosoma = lambda largo: [choice([0,1]) for i in range(largo)]
     P = []
     for i in range(n):
         P.append(cromosoma(largo))
@@ -59,8 +105,8 @@ def genera_x0(F):
     r = arange(1,(N+1), 0.01)
     lgR, lgF = log10(R), log10(F)
     V = linregress(lgR, lgF)
-    if(verbose):
-        print(str(V))
+    # if(verbose):
+    #     print(str(V))
     m = abs(V.slope)
     b = abs(V.intercept)
     return array([b, abs(m), abs(m)])
@@ -89,6 +135,24 @@ def ajuste(F, verbose=False):
         print(str(sqrt(diag(pcov))))
         print(str(r2))
     return popt , pcov, r2
+
+def graf_datos(y, arr, titulo, nomf):
+    """
+    Grafica los datos en y
+    y el ajuste en arr
+    """
+    a,b,A,N,r2 = arr
+    N = int(N)
+    R = arange(1,N+1,0.05)
+    params = [R,a,b,A,N]
+    Y = germibeta(*params)
+    fig = plt.figure()
+    plt.semilogy(range(1,N+1),y,'.', R,Y)
+    plt.xlabel(r'\textbf{Rango}')
+    plt.ylabel(r'\textbf{Frecs (log)}')
+    plt.title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
+    plt.savefig(nomf+'.png')
+    del(fig)
 
 
 def uso():
