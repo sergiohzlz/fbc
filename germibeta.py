@@ -93,21 +93,9 @@ class Germibeta(object):
 
 
 def germibeta(r, alfa, beta, A, N, base=10):
-    fac = base**A
-    num = power((N+1-r),beta)
-    den = power(r,alfa)
-    return fac*num/den
-
-def genera_individuos(largo,n):
-    """
-    GA.
-    Genera N individuos con un cromosoma de largo=largo
-    """
-    cromosoma = lambda largo: [choice([0,1]) for i in range(largo)]
-    P = []
-    for i in range(n):
-        P.append(cromosoma(largo))
-    return P
+    num = (N+1-r)**beta
+    den = r**alfa
+    return A*num/den
 
 def genera_x0(F):
     """
@@ -116,8 +104,7 @@ def genera_x0(F):
     otros métodos.
     """
     N = len(F)
-    R = range(1,N+1)
-    r = arange(1,(N+1), 0.01)
+    R = arange(1,N+1)
     lgR, lgF = log10(R), log10(F)
     V = linregress(lgR, lgF)
     # if(verbose):
@@ -132,23 +119,27 @@ def ajuste(F, verbose=False):
     Se usa Levenberg-Marquadt para el ajuste
     """
     N = len(F)
-    R = range(1,N+1)
-    r = arange(1,(N+1), 0.01)
-    lgR, lgF = log10(R), log10(F)
-    V = linregress(lgR, lgF)
-    if(verbose):
-        print(str(V))
-    m = abs(V.slope)
-    b = abs(V.intercept)
+    R = arange(1,N+1)
+    # r = arange(1,(N+1), 0.01)
+    # lgR, lgF = log10(R), log10(F)
+    
 
-    x0 = array( [b, abs(m), abs(m)] )
-    modelo = lambda r,x,y,z : germibeta(r, x, y, z, N)
-    popt, pcov = curve_fit( modelo, R, F, x0, sigma=F, method='lm')
-    r2 = r2_score( F, modelo(array(R), popt[0], popt[1], popt[2]) )
+    x0 = genera_x0(F)
     if(verbose):
-        print(str(popt))
-        print(str(sqrt(diag(pcov))))
-        print(str(r2))
+        print(f"Punto inicial {x0}")
+
+    def modelo(r, alfa, beta, A):
+        return germibeta(r, alfa, beta, A, N)
+    
+    popt, pcov = curve_fit( modelo, R, F, p0=x0, 
+                            sigma=F,
+                            method='lm')
+    F_pred = modelo(R, *popt)
+    r2 = r2_score(F, F_pred)
+    if(verbose):
+        print("Parámetros óptimos")
+        print(f"{sqrt(diag(pcov))}")
+        print(f"R2 {r2:.5f}")
     return popt , pcov, r2
 
 def graf_datos(y, arr, titulo, nomf):
@@ -172,6 +163,13 @@ def graf_datos(y, arr, titulo, nomf):
 
 def uso():
     print("Ejemplo\npython germibeta -i archivo -c columna -m lineas -v|--verbose")
+
+def ejemplo():
+    F = [int(x.strip()) for x in open('fbc_brown.csv').readlines()]
+    arr, pcov, r2 = ajuste(F, verbose=True)
+
+ejemplo()
+
 
 
 if __name__ =='__main__':
