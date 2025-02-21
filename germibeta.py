@@ -169,7 +169,6 @@ def ejemplo():
     arr, _, r2 = ajuste(F, verbose=True)
     params = array([arr[0], arr[1], arr[2], len(F), r2])
     graf_datos(F, params, 'fbc_ejemplo','fbc')
-ejemplo()
 
 
 
