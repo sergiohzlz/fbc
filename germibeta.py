@@ -10,6 +10,8 @@ from numpy            import exp, log, log10, array,  power, arange, loadtxt, sq
 from numpy.random     import normal, random, choice
 from sklearn.metrics  import r2_score
 
+import pandas as pd
+
 # matplotlib.rcParams['text.usetex'] = True
 # matplotlib.rcParams['text.latex.unicode'] = True
 import matplotlib.pyplot as plt
@@ -17,11 +19,22 @@ plt.style.use('ggplot')
 
 class Germibeta(object):
 
-    def carga_archivo(self, archivo, sep=","):
+    def carga_archivo(self, archivo, sep=",", header=None):
         """
         Carga el archivo en el parámetro
+
+        Parameters:
+        - header determina si el archivo tiene encabezado
+        - sep es el separador
+        - archivo es el archivo que contiene los datos
+        
+        Returns: 
+        None
         """
-        self.f = loadtxt(archivo,delimiter=sep)
+        if(header is not None):
+            self.f = pd.read_csv(archivo, delimiter=sep)
+        else:
+            self.f = pd.read_csv(archivo, delimiter=sep, header=None, names=['vals'])
         self.N = len(self.f)
     
     def germibeta(self, 
@@ -49,16 +62,18 @@ class Germibeta(object):
         den = power(r,alfa)
         return fac*num/den
 
-    def genera_x0(self, verbose=True):
+    def __genera_x0(self, F, verbose=True):
         """
         Toma la distribución F y genera a través de una
         regresión lineal el punto x0 que será usado para
         otros métodos.
         """
         N = len(F)
-        R = range(1,N+1)
+        R = arange(1,N+1)
         # r = arange(1,(N+1), 0.01)
         lgR, lgF = log10(R), log10(F)
+        if(verbose):
+            print(f"{lgR.shape} - {lgF.shape}")
         V = linregress(lgR, lgF)
         if(verbose):
             print(str(V))
@@ -66,30 +81,46 @@ class Germibeta(object):
         b = abs(V.intercept)
         return array([b, abs(m), abs(m)])
 
-    def ajuste(self, F, verbose=False):
+    def ajuste(self, F=None, verbose=False):
         """
         Ajusta no-lineal de los datos en F
         Se usa Levenberg-Marquadt para el ajuste
         """
-        N = len(F)
-        R = range(1,N+1)
-        r = arange(1,(N+1), 0.01)
-        lgR, lgF = log10(R), log10(F)
-        V = linregress(lgR, lgF)
-        if(verbose):
-            print(str(V))
-        m = abs(V.slope)
-        b = abs(V.intercept)
+        if(F is None and self.f is not None):
+            N = self.N
+            F = self.f['vals'].values.reshape(N,)
+        elif(F is not None):
+            N = len(F)
+        R = arange(1,N+1)
+        # r = arange(1,(N+1), 0.01)
+        # lgR, lgF = log10(R), log10(F)
+        
 
-        x0 = array( [b, abs(m), abs(m)] )
-        modelo = lambda r,x,y,z : germibeta(r, x, y, z, N)
-        popt, pcov = curve_fit( modelo, R, F, x0, sigma=F, method='lm')
-        r2 = r2_score( F, modelo(array(R), popt[0], popt[1], popt[2]) )
+        x0 = self.__genera_x0(F, verbose=verbose)
         if(verbose):
-            print(str(popt))
-            print(str(sqrt(diag(pcov))))
-            print(str(r2))
+            print(f"Punto inicial {x0}")
+
+        def modelo(r, alfa, beta, A):
+            return germibeta(r, alfa, beta, A, N)
+        
+        popt, pcov = curve_fit( modelo, R, F, p0=x0, 
+                                sigma=F,
+                                method='lm')
+        F_pred = modelo(R, *popt)
+        r2 = r2_score(F, F_pred)
+
+        self.__params = array([popt[0], popt[1], popt[2], self.N, r2])
+
+        if(verbose):
+            print("Parámetros óptimos")
+            print(f"{sqrt(diag(pcov))}")
+            print(f"R2 {r2:.5f}")
         return popt , pcov, r2
+
+    @property 
+    def params(self):
+        return self.__params
+
 
 
 def germibeta(r, alfa, beta, A, N, base=10):
@@ -169,6 +200,15 @@ def ejemplo():
     arr, _, r2 = ajuste(F, verbose=True)
     params = array([arr[0], arr[1], arr[2], len(F), r2])
     graf_datos(F, params, 'fbc_ejemplo','fbc')
+
+def ejemplo_clase():
+    gg = Germibeta()
+    gg.carga_archivo('./fbc_brown.csv')
+    arr, _, r2 = gg.ajuste()
+    params = gg.params
+    graf_datos(gg.f, params, 'fbc_ejemplo (clase)','fbc_obj')
+
+
 
 
 
