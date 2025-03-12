@@ -91,6 +91,7 @@ class Germibeta(object):
             F = self.f['vals'].values.reshape(N,)
         elif(F is not None):
             N = len(F)
+            self.N = N
         R = arange(1,N+1)
         # r = arange(1,(N+1), 0.01)
         # lgR, lgF = log10(R), log10(F)
