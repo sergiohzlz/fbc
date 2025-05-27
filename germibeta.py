@@ -38,11 +38,11 @@ class Germibeta(object):
         self.N = len(self.f)
     
     def germibeta(self, 
-                  r : int,
+                  r : array,
                   alfa : float, 
                   beta : float, 
                   A, 
-                  N, base=10) -> float:
+                  N, base=10) -> array:
         """ 
         Fase final para hacer el cálculo de  la 
         distribución usando los valores en los parámetros
@@ -62,7 +62,7 @@ class Germibeta(object):
         den = power(r,alfa)
         return fac*num/den
 
-    def __genera_x0(self, F, verbose=True):
+    def __genera_x0(self, F : list, verbose=True) -> array:
         """
         Toma la distribución F y genera a través de una
         regresión lineal el punto x0 que será usado para
@@ -174,23 +174,48 @@ def ajuste(F, verbose=False):
         print(f"R2 {r2:.5f}")
     return popt , pcov, r2
 
-def graf_datos(y, arr, titulo, nomf):
+def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
     """
-    Grafica los datos en y
-    y el ajuste en arr
+    Grafica los datos empiricos en y y el ajuste representado
+    en el parámetro arr. 
+    Le pone titulo y guarda en archivo
+
+    - Params
+    y list de datos
+    arr array con parametros
+    titulo str con titulo
+    nomf str de archivo de salida
+
+    -Returns 
+    None
+
     """
     a,b,A,N,r2 = arr
     N = int(N)
     R = arange(1,N+1,0.05)
     params = [R,a,b,A,N]
     Y = germibeta(*params)
-    fig = plt.figure()
-    plt.semilogy(range(1,N+1),y,'.', R,Y)
-    plt.xlabel(r'\textbf{Rango}')
-    plt.ylabel(r'\textbf{Frecs (log)}')
-    plt.title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
-    plt.savefig(nomf+'.png')
-    del(fig)
+
+    if ax is None:
+        assert not (nomf is None)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        nf = True
+    else:
+        nf = False 
+    
+    Vy = max(Y) + max(Y)*0.1
+    vy = min(y) - min(y)*0.2
+    ax.semilogy(range(1,N+1),y,'.', R,Y)
+    ax.set_ylim([vy, Vy])
+    ax.set_xlabel(r'\textbf{Rango}')
+    ax.set_ylabel(r'\textbf{Frecs (log)}')
+    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
+    
+    if(nf):
+        plt.savefig(nomf+'.png')
+        plt.close(fig)
+        del(fig)
 
 
 def uso():
