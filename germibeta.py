@@ -4,9 +4,11 @@
 import os
 import sys, getopt
 
+import numpy as np
+
 from scipy.stats      import linregress
 from scipy.optimize   import curve_fit
-from numpy            import exp, log, log10, array,  power, arange, loadtxt, sqrt, diag
+from numpy            import exp, log, array,  power, arange, loadtxt, sqrt, diag
 from numpy.random     import normal, random, choice
 from sklearn.metrics  import r2_score
 
@@ -36,13 +38,13 @@ class Germibeta(object):
         else:
             self.f = pd.read_csv(archivo, delimiter=sep, header=None, names=['vals'])
         self.N = len(self.f)
-    
+
     def germibeta(self, 
-                  r : array,
+                  r : np.array,
                   alfa : float, 
                   beta : float, 
                   A, 
-                  N, base=10) -> array:
+                  N) -> np.array:
         """ 
         Fase final para hacer el cálculo de  la 
         distribución usando los valores en los parámetros
@@ -57,12 +59,12 @@ class Germibeta(object):
         Returns:
         Lista de valores con los valores asignados en el parámetro
         """
-        fac = base**A
+        fac = A
         num = power((N+1-r),beta)
         den = power(r,alfa)
         return fac*num/den
 
-    def __genera_x0(self, F : list, verbose=True) -> array:
+    def __genera_x0(self, F : list, verbose=True) -> object:
         """
         Toma la distribución F y genera a través de una
         regresión lineal el punto x0 que será usado para
@@ -71,7 +73,9 @@ class Germibeta(object):
         N = len(F)
         R = arange(1,N+1)
         # r = arange(1,(N+1), 0.01)
-        lgR, lgF = log10(R), log10(F)
+        # lgR, lgF = log10(R), log10(F)
+        lgR, lgF = log(R), log(F)
+
         if(verbose):
             print(f"{lgR.shape} - {lgF.shape}")
         V = linregress(lgR, lgF)
@@ -79,44 +83,82 @@ class Germibeta(object):
             print(str(V))
         m = abs(V.slope)
         b = abs(V.intercept)
+
+        # Establecemos el punto 
+        self.__m = m
+        self.__b = b
         return array([b, abs(m), abs(m)])
 
-    def ajuste(self, F=None, verbose=False):
+    def ajuste(self, F=None, verbose=False, metodo='lm'):
         """
         Ajusta no-lineal de los datos en F
         Se usa Levenberg-Marquadt para el ajuste
         """
-        if(F is None and self.f is not None):
-            N = self.N
-            F = self.f['vals'].values.reshape(N,)
-        elif(F is not None):
-            N = len(F)
-            self.N = N
-        R = arange(1,N+1)
+        if(F is None and self.f is not None):  # los datos fueron cargados durante la instancia
+            F = self.f['vals'].values.reshape(self.N,)
+        elif(F is not None):                   # los datos los definimos de una lista
+            self.N = len(F)
+        N = self.N    
+        R = arange(1,self.N+1)
         # r = arange(1,(N+1), 0.01)
         # lgR, lgF = log10(R), log10(F)
-        
 
-        x0 = self.__genera_x0(F, verbose=verbose)
-        if(verbose):
-            print(f"Punto inicial {x0}")
+        # elegimos el método de regresión
+        # ya sea no lineal lm
+        # o transformación loglog
+        assert metodo in ['loglog','lm']
 
-        def modelo(r, alfa, beta, A):
-            return germibeta(r, alfa, beta, A, N)
-        
-        popt, pcov = curve_fit( modelo, R, F, p0=x0, 
-                                sigma=F,
-                                method='lm')
-        F_pred = modelo(R, *popt)
-        r2 = r2_score(F, F_pred)
+        if(metodo=='lm'):
+            # x0 = self.__genera_x0(F, verbose=verbose)
+            if(verbose):
+                print(f"Punto inicial {x0}")
+    
+            def modelo_lm(r, alfa, beta, A):
+                return self.germibeta(r, alfa, beta, A, N)
+            
+            
+            popt, pcov = curve_fit( modelo_lm, R, F, p0=[0,0,1], 
+                                    sigma=F,
+                                    method='lm')
+            F_pred = modelo_lm(R, *popt)
+            r2 = r2_score(F, F_pred)
+    
+            self.__params = array([popt[0], popt[1], popt[2], self.N, r2])
+    
+            if(verbose):
+                print("Parámetros óptimos")
+                print(f"{sqrt(diag(pcov))}")
+                print(f"R2 {r2:.5f}")
+            return popt , pcov, r2
+            
+        if(metodo=='loglog'):
+            
+            # hacemos transformación log-log
+            modelo_loglog = lambda r, logA, alfa, beta: logA + beta*np.log(self.N + 1 - r) - alfa*np.log(r)
+            
+            # assume rdata, ydata, N already defined and ydata > 0
+            x1 = log(N + 1 - R)
+            x2 = log(R)
+            Y  = log(F)
 
-        self.__params = array([popt[0], popt[1], popt[2], self.N, r2])
+            # generamos la matriz de diseño X
+            X = np.column_stack([np.ones_like(x1), x1, x2])
 
-        if(verbose):
-            print("Parámetros óptimos")
-            print(f"{sqrt(diag(pcov))}")
-            print(f"R2 {r2:.5f}")
-        return popt , pcov, r2
+            # hacemos la regresión
+            beta, *_ = np.linalg.lstsq(X, Y, rcond=None)
+            beta0, beta1, beta2 = beta
+
+            # ajustamos los valores para regresarlos
+            A = np.exp(beta0)
+            b = beta1
+            a = -beta2
+
+            r2 = r2_score(F, modelo_loglog(R, np.log(A), a, b))
+
+            self.__params = [a, b, A, self.N, r2]
+            
+            return self.__params
+            
 
     @property 
     def params(self):
@@ -124,55 +166,55 @@ class Germibeta(object):
 
 
 
-def germibeta(r, alfa, beta, A, N, base=10):
-    num = (N+1-r)**beta
-    den = r**alfa
+def germibeta(r, alfa, beta, A, N, r2 ):
+    num = power((N+1-r),beta)
+    den = power(r,alfa)
     return A*num/den
 
-def genera_x0(F):
-    """
-    Toma la distribución F y genera a través de una
-    regresión lineal el punto x0 que será usado para
-    otros métodos.
-    """
-    N = len(F)
-    R = arange(1,N+1)
-    lgR, lgF = log10(R), log10(F)
-    V = linregress(lgR, lgF)
-    # if(verbose):
-    #     print(str(V))
-    m = abs(V.slope)
-    b = abs(V.intercept)
-    return array([b, abs(m), abs(m)])
+# def genera_x0(F):
+#     """
+#     Toma la distribución F y genera a través de una
+#     regresión lineal el punto x0 que será usado para
+#     otros métodos.
+#     """
+#     N = len(F)
+#     R = arange(1,N+1)
+#     lgR, lgF = log10(R), log10(F)
+#     V = linregress(lgR, lgF)
+#     # if(verbose):
+#     #     print(str(V))
+#     m = abs(V.slope)
+#     b = abs(V.intercept)
+#     return array([b, abs(m), abs(m)])
 
-def ajuste(F, verbose=False):
-    """
-    Ajusta no-lineal de los datos en F
-    Se usa Levenberg-Marquadt para el ajuste
-    """
-    N = len(F)
-    R = arange(1,N+1)
-    # r = arange(1,(N+1), 0.01)
-    # lgR, lgF = log10(R), log10(F)
+# def ajuste(F, verbose=False):
+#     """
+#     Ajusta no-lineal de los datos en F
+#     Se usa Levenberg-Marquadt para el ajuste
+#     """
+#     N = len(F)
+#     R = arange(1,N+1)
+#     # r = arange(1,(N+1), 0.01)
+#     # lgR, lgF = log10(R), log10(F)
     
 
-    x0 = genera_x0(F)
-    if(verbose):
-        print(f"Punto inicial {x0}")
+#     x0 = genera_x0(F)
+#     if(verbose):
+#         print(f"Punto inicial {x0}")
 
-    def modelo(r, alfa, beta, A):
-        return germibeta(r, alfa, beta, A, N)
+#     def modelo(r, alfa, beta, A):
+#         return germibeta(r, alfa, beta, A, N)
     
-    popt, pcov = curve_fit( modelo, R, F, p0=x0, 
-                            sigma=F,
-                            method='lm')
-    F_pred = modelo(R, *popt)
-    r2 = r2_score(F, F_pred)
-    if(verbose):
-        print("Parámetros óptimos")
-        print(f"{sqrt(diag(pcov))}")
-        print(f"R2 {r2:.5f}")
-    return popt , pcov, r2
+#     popt, pcov = curve_fit( modelo, R, F, p0=x0, 
+#                             sigma=F,
+#                             method='lm')
+#     F_pred = modelo(R, *popt)
+#     r2 = r2_score(F, F_pred)
+#     if(verbose):
+#         print("Parámetros óptimos")
+#         print(f"{sqrt(diag(pcov))}")
+#         print(f"R2 {r2:.5f}")
+#     return popt , pcov, r2
 
 def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
     """
@@ -194,7 +236,7 @@ def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
     N = int(N)
     R = arange(1,N+1,0.05)
     params = [R,a,b,A,N]
-    Y = germibeta(*params)
+    Y = germibeta(R, *arr)
 
     if ax is None:
         assert not (nomf is None)
@@ -208,8 +250,8 @@ def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
     vy = min(y) - min(y)*0.2
     ax.semilogy(range(1,N+1),y,'.', R,Y)
     ax.set_ylim([vy, Vy])
-    ax.set_xlabel(r'\textbf{Rango}')
-    ax.set_ylabel(r'\textbf{Frecs (log)}')
+    ax.set_xlabel(r'$\text{Rango}$')
+    ax.set_ylabel(r'$\text{Frecs (log)}$')
     ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
     
     if(nf):
