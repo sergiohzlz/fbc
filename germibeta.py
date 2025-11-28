@@ -64,7 +64,7 @@ class Germibeta(object):
         den = power(r,alfa)
         return fac*num/den
 
-    def __genera_x0(self, F : list, verbose=True) -> object:
+    def __genera_x0(self, F : list, verbose=True) -> np.array:
         """
         Toma la distribución F y genera a través de una
         regresión lineal el punto x0 que será usado para
@@ -87,9 +87,23 @@ class Germibeta(object):
         # Establecemos el punto 
         self.__m = m
         self.__b = b
-        return array([b, abs(m), abs(m)])
+        return array([b, abs(m), abs(m), N])
 
-    def ajuste(self, F=None, verbose=False, metodo='lm'):
+    def __r2_score(self, Y:np.array, Y_pred: np.array ) -> float:
+        """
+        Se calcula el r2 con los elementos de lista Y e Y_pred que serían
+        los datos bajo el modedlo
+
+        - Returns:
+            Regresa el score r2
+        """
+        ss_res = np.sum((Y - Y_pred)**2)
+        ss_tot = np.sum((Y - np.mean(Y))**2)
+        r2 = 1 - ss_res/ss_tot
+
+        return r2
+
+    def ajuste(self, F=None, verbose=False, metodo='trf') -> np.array:
         """
         Ajusta no-lineal de los datos en F
         Se usa Levenberg-Marquadt para el ajuste
@@ -106,22 +120,25 @@ class Germibeta(object):
         # elegimos el método de regresión
         # ya sea no lineal lm
         # o transformación loglog
-        assert metodo in ['loglog','lm']
+        assert metodo in ['loglog','trf']
 
-        if(metodo=='lm'):
-            # x0 = self.__genera_x0(F, verbose=verbose)
+        if(metodo=='trf'):
+            x0 = self.__genera_x0(F, verbose=verbose)
             if(verbose):
                 print(f"Punto inicial {x0}")
     
-            def modelo_lm(r, alfa, beta, A):
+            def modelo_lm(r, alfa, beta, A, N):
                 return self.germibeta(r, alfa, beta, A, N)
             
             
-            popt, pcov = curve_fit( modelo_lm, R, F, p0=[0,0,1], 
+            popt, pcov = curve_fit( modelo_lm, R, F, p0=x0, 
                                     sigma=F,
-                                    method='lm')
+                                    bounds=(0, np.inf),
+                                    method='trf')
             F_pred = modelo_lm(R, *popt)
-            r2 = r2_score(F, F_pred)
+            # r2 = r2_score(F, F_pred)
+            r2 = self.__r2_score(F, F_pred)
+
     
             self.__params = array([popt[0], popt[1], popt[2], self.N, r2])
     
@@ -152,8 +169,10 @@ class Germibeta(object):
             A = np.exp(beta0)
             b = beta1
             a = -beta2
-
-            r2 = r2_score(F, modelo_loglog(R, np.log(A), a, b))
+            F_pred = modelo_loglog(R, np.log(A), a, b)
+        
+            # r2 = r2_score(F, modelo_loglog(R, np.log(A), a, b))
+            r2 = self.__r2_score(np.log(F), F_pred)
 
             self.__params = [a, b, A, self.N, r2]
             
