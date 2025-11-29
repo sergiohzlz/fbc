@@ -14,8 +14,6 @@ from sklearn.metrics  import r2_score
 
 import pandas as pd
 
-# matplotlib.rcParams['text.usetex'] = True
-# matplotlib.rcParams['text.latex.unicode'] = True
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
@@ -103,9 +101,12 @@ class Germibeta(object):
 
         return r2
 
-    def ajuste(self, F=None, verbose=False, metodo='trf') -> np.array:
+    def ajuste(self, F=None, verbose=False, metodo='loglog') -> np.array:
         """
-        Ajusta no-lineal de los datos en F
+        Ajusta  F de acuerdo al método en el parámetros
+
+        - Parameters:
+            metodo : 'trf' 
         Se usa Levenberg-Marquadt para el ajuste
         """
         if(F is None and self.f is not None):  # los datos fueron cargados durante la instancia
@@ -120,7 +121,7 @@ class Germibeta(object):
         # elegimos el método de regresión
         # ya sea no lineal lm
         # o transformación loglog
-        assert metodo in ['loglog','trf']
+        assert metodo in ['loglog','trf', 'de']
 
         if(metodo=='trf'):
             x0 = self.__genera_x0(F, verbose=verbose)
@@ -146,9 +147,9 @@ class Germibeta(object):
                 print("Parámetros óptimos")
                 print(f"{sqrt(diag(pcov))}")
                 print(f"R2 {r2:.5f}")
-            return popt , pcov, r2
             
-        if(metodo=='loglog'):
+            
+        elif(metodo=='loglog'):
             
             # hacemos transformación log-log
             modelo_loglog = lambda r, logA, alfa, beta: logA + beta*np.log(self.N + 1 - r) - alfa*np.log(r)
@@ -175,8 +176,29 @@ class Germibeta(object):
             r2 = self.__r2_score(np.log(F), F_pred)
 
             self.__params = [a, b, A, self.N, r2]
+
+        elif(metodo=='de'):
+            modelo_loglog = lambda r, logA, alfa, beta: logA + beta*np.log(self.N + 1 - r) - alfa*np.log(r)
+
+            def objective(params, r, F, N):
+                logA, a, b = params
+                F_pred_log = log_model(r, logA, a, b, N)
+                residuals = np.log(F) - F_pred_log
+                return np.sum(residuals**2)   # SSR in log space
+
+            bounds = [(0, 500), (-5, 5), (-5, 5)]
+
+            result = differential_evolution(
+                objective,
+                bounds,
+                args=(R, F, N),
+                tol=1e-6,
+                polish=True
+            )
+            logA_opt, a_opt, b_opt = result.x
+            A_opt = np.exp(logA_opt)
             
-            return self.__params
+        return self.__params
             
 
     @property 
