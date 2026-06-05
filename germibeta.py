@@ -212,52 +212,8 @@ def germibeta(r, alfa, beta, A, N, r2 ):
     den = power(r,alfa)
     return A*num/den
 
-# def genera_x0(F):
-#     """
-#     Toma la distribución F y genera a través de una
-#     regresión lineal el punto x0 que será usado para
-#     otros métodos.
-#     """
-#     N = len(F)
-#     R = arange(1,N+1)
-#     lgR, lgF = log10(R), log10(F)
-#     V = linregress(lgR, lgF)
-#     # if(verbose):
-#     #     print(str(V))
-#     m = abs(V.slope)
-#     b = abs(V.intercept)
-#     return array([b, abs(m), abs(m)])
 
-# def ajuste(F, verbose=False):
-#     """
-#     Ajusta no-lineal de los datos en F
-#     Se usa Levenberg-Marquadt para el ajuste
-#     """
-#     N = len(F)
-#     R = arange(1,N+1)
-#     # r = arange(1,(N+1), 0.01)
-#     # lgR, lgF = log10(R), log10(F)
-    
-
-#     x0 = genera_x0(F)
-#     if(verbose):
-#         print(f"Punto inicial {x0}")
-
-#     def modelo(r, alfa, beta, A):
-#         return germibeta(r, alfa, beta, A, N)
-    
-#     popt, pcov = curve_fit( modelo, R, F, p0=x0, 
-#                             sigma=F,
-#                             method='lm')
-#     F_pred = modelo(R, *popt)
-#     r2 = r2_score(F, F_pred)
-#     if(verbose):
-#         print("Parámetros óptimos")
-#         print(f"{sqrt(diag(pcov))}")
-#         print(f"R2 {r2:.5f}")
-#     return popt , pcov, r2
-
-def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
+def graf_datos(y:list, arr:array, titulos:dict, nomf=None, ax=None) -> None:
     """
     Grafica los datos empiricos en y y el ajuste representado
     en el parámetro arr. 
@@ -279,24 +235,28 @@ def graf_datos(y:list, arr:array, titulo:str, nomf=None, ax=None) -> None:
     params = [R,a,b,A,N]
     Y = germibeta(R, *arr)
 
+    if(titulos is not None):
+        titulo = titulos['titulo']
+        eje_x  = titulos['eje_x']
+        eje_y  = titulos['eje_y']
+
+    nf = False
     if ax is None:
         assert not (nomf is None)
         fig = plt.figure()
         ax = fig.add_subplot(111)
         nf = True
-    else:
-        nf = False 
     
     Vy = max(Y) + max(Y)*0.1
     vy = min(y) - min(y)*0.2
     ax.semilogy(range(1,N+1),y,'.', R,Y)
     ax.set_ylim([vy, Vy])
-    ax.set_xlabel(r'$\text{Rango}$')
-    ax.set_ylabel(r'$\text{Frecs (log)}$')
-    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}), $r^2$={2:.4f}: ".format(a,b,r2))
+    ax.set_xlabel(eje_x)
+    ax.set_ylabel(eje_y)
+    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=14)
     
     if(nf):
-        plt.savefig(nomf+'.png')
+        plt.savefig(nomf)
         plt.close(fig)
         del(fig)
 
@@ -308,7 +268,7 @@ def ejemplo():
     F = [int(x.strip()) for x in open('fbc_brown.csv').readlines()]
     arr, _, r2 = ajuste(F, verbose=True)
     params = array([arr[0], arr[1], arr[2], len(F), r2])
-    graf_datos(F, params, 'fbc_ejemplo','fbc')
+    graf_datos(F, params, {'titulo':'FBC ejemplo', 'eje_x': 'Rank', 'eje_y':'\text{\log(f)}'},'fbc')
 
 def ejemplo_clase():
     gg = Germibeta()
