@@ -232,6 +232,8 @@ def graf_datos(y:list, arr:array, titulos:dict, nomf=None, ax=None) -> None:
     a,b,A,N,r2 = arr
     N = int(N)
     R = arange(1,N+1,0.05)
+
+    # reacomodamos el arreglo
     params = [R,a,b,A,N]
     Y = germibeta(R, *arr)
 
@@ -253,7 +255,7 @@ def graf_datos(y:list, arr:array, titulos:dict, nomf=None, ax=None) -> None:
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
-    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=14)
+    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
     
     if(nf):
         plt.savefig(nomf)
@@ -273,9 +275,11 @@ def ejemplo():
 def ejemplo_clase():
     gg = Germibeta()
     gg.carga_archivo('./fbc_brown.csv')
-    arr, _, r2 = gg.ajuste()
+    gg.ajuste()
     params = gg.params
-    graf_datos(gg.f, params, 'fbc_ejemplo (clase)','fbc_obj')
+    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown noise',
+                                            'eje_x' : 'Rango', 
+                                            'eje_y' : r'$\log(f)$'},'fbc_o.png')
 
 
 
@@ -287,6 +291,8 @@ if __name__ =='__main__':
         opts, args = getopt.getopt( args, "i:vc:m:s:", ["input=","muestreo=","verbose","columna=","sep="] )
     except getopt.GetoptError:
         print("Erorr en los parámetros")
+        uso()
+
     verbose = False
     columna  = -1
     umbral   = 1
