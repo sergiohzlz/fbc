@@ -213,7 +213,8 @@ def germibeta(r, alfa, beta, A, N, r2 ):
     return A*num/den
 
 
-def graf_datos(y:list, arr:array, titulos:dict, nomf=None, ax=None) -> None:
+def graf_datos(y:list, arr:array, titulos:dict, 
+               nomf=None, ax=None, **kwargs) -> None:
     """
     Grafica los datos empiricos en y y el ajuste representado
     en el parámetro arr. 
@@ -245,7 +246,7 @@ def graf_datos(y:list, arr:array, titulos:dict, nomf=None, ax=None) -> None:
     nf = False
     if ax is None:
         assert not (nomf is None)
-        fig = plt.figure()
+        fig = plt.figure(**kwargs)
         ax = fig.add_subplot(111)
         nf = True
     
