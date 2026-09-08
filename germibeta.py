@@ -106,8 +106,10 @@ class Germibeta(object):
         Ajusta  F de acuerdo al método en el parámetros
 
         - Parameters:
-            metodo : 'trf' 
-        Se usa Levenberg-Marquadt para el ajuste
+            metodo : 'trf'     Se usa Levenberg-Marquadt para el ajuste
+                     'loglog'  Ajuste multilineal 
+                     'de'      Differential evolution
+            verbose : True or False 
         """
         if(F is None and self.f is not None):  # los datos fueron cargados durante la instancia
             F = self.f['vals'].values.reshape(self.N,)
@@ -271,7 +273,7 @@ def ejemplo():
     F = [int(x.strip()) for x in open('fbc_brown.csv').readlines()]
     arr, _, r2 = ajuste(F, verbose=True)
     params = array([arr[0], arr[1], arr[2], len(F), r2])
-    graf_datos(F, params, {'titulo':'FBC ejemplo', 'eje_x': 'Rank', 'eje_y':'\text{\log(f)}'},'fbc')
+    graf_datos(F, params, {'titulo':'FBC ejemplo', 'eje_x': 'Rank', 'eje_y':'\log(f)'},'fbc')
 
 def ejemplo_clase():
     gg = Germibeta()
