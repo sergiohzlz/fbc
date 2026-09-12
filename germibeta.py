@@ -214,7 +214,7 @@ def germibeta(r, alfa, beta, A, N, r2 ):
 
 
 def graf_datos(y:list, arr:array, titulos:dict, 
-               nomf=None, ax=None, **kwargs) -> None:
+               nomf=None, ax=None, ab=True, **kwargs) -> None:
     """
     Grafica los datos empiricos en y y el ajuste representado
     en el parámetro arr. 
@@ -250,13 +250,14 @@ def graf_datos(y:list, arr:array, titulos:dict,
         ax = fig.add_subplot(111)
         nf = True
     
+    alpha, beta = (r'\alpha', r'\beta') if ab else ('a', 'b')
     Vy = max(Y) + max(Y)*0.1
     vy = min(y) - min(y)*0.2
     ax.semilogy(range(1,N+1),y,'.', R,Y)
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
-    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
+    ax.set_title(titulo + '\n' + rf"$({alpha},{beta})$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
     
     if(nf):
         plt.savefig(nomf)
