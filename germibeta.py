@@ -257,9 +257,11 @@ def graf_datos(y:list, arr:array, titulos:dict,
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
-    ax.set_title(titulo + '\n' + rf"$({alpha},{beta})$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
+    coefs_str = rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
+    ax.set_title(titulo + '\n' + f"{coefs_str}", fontsize=12)
     
     if(nf):
+        print("Salvando archivo")
         plt.savefig(nomf)
         plt.close(fig)
         del(fig)
