@@ -14,6 +14,14 @@ El cálculo de exponentes se realiza por varios métodos, uno es una regresión 
 otro es una regresión no lineal (Marquadt-Levenberg)
 
 ---
+## ToDo
+- Cambiar nombres con bc_
+- Agregar método de comparación de errores
+- Agregar método para error en cada rango
+- Ajustes de ejemplos
+
+  
+---
 ## Métodos principales
 
 La invocación principal desde python puede hacerse de la siguiente forma:

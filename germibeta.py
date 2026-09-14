@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/usr/bin/python
 #coding:utf8
 
@@ -363,3 +364,355 @@ if __name__ =='__main__':
         print(V)
 
 
+=======
+#!/usr/bin/python
+#coding:utf8
+
+import os
+import sys, getopt
+
+import numpy as np
+
+from scipy.stats      import linregress
+from scipy.optimize   import curve_fit
+from numpy            import exp, log, array,  power, arange, loadtxt, sqrt, diag
+from numpy.random     import normal, random, choice
+from sklearn.metrics  import r2_score
+
+import pandas as pd
+
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+
+class Germibeta(object):
+
+    def carga_archivo(self, archivo, sep=",", header=None):
+        """
+        Carga el archivo en el parámetro
+
+        Parameters:
+        - header determina si el archivo tiene encabezado
+        - sep es el separador
+        - archivo es el archivo que contiene los datos
+        
+        Returns: 
+        None
+        """
+        if(header is not None):
+            self.f = pd.read_csv(archivo, delimiter=sep)
+        else:
+            self.f = pd.read_csv(archivo, delimiter=sep, header=None, names=['vals'])
+        self.N = len(self.f)
+
+    def germibeta(self, 
+                  r : np.array,
+                  alfa : float, 
+                  beta : float, 
+                  A, 
+                  N) -> np.array:
+        """ 
+        Fase final para hacer el cálculo de  la 
+        distribución usando los valores en los parámetros
+
+        Parameters:
+        r       : arreglo de enteros
+        alfa    : exponente del denominador
+        beta    : exponente del numerador
+        A       : Constante de normalización
+        N       : entero con la cantidad de rangos
+        base=10
+        Returns:
+        Lista de valores con los valores asignados en el parámetro
+        """
+        fac = A
+        num = power((N+1-r),beta)
+        den = power(r,alfa)
+        return fac*num/den
+
+    def __genera_x0(self, F : list, verbose=True) -> np.array:
+        """
+        Toma la distribución F y genera a través de una
+        regresión lineal el punto x0 que será usado para
+        otros métodos.
+        """
+        N = len(F)
+        R = arange(1,N+1)
+        # r = arange(1,(N+1), 0.01)
+        # lgR, lgF = log10(R), log10(F)
+        lgR, lgF = log(R), log(F)
+
+        if(verbose):
+            print(f"{lgR.shape} - {lgF.shape}")
+        V = linregress(lgR, lgF)
+        if(verbose):
+            print(str(V))
+        m = abs(V.slope)
+        b = abs(V.intercept)
+
+        # Establecemos el punto 
+        self.__m = m
+        self.__b = b
+        return array([b, abs(m), abs(m), N])
+
+    def __r2_score(self, Y:np.array, Y_pred: np.array ) -> float:
+        """
+        Se calcula el r2 con los elementos de lista Y e Y_pred que serían
+        los datos bajo el modedlo
+
+        - Returns:
+            Regresa el score r2
+        """
+        ss_res = np.sum((Y - Y_pred)**2)
+        ss_tot = np.sum((Y - np.mean(Y))**2)
+        r2 = 1 - ss_res/ss_tot
+
+        return r2
+
+    def ajuste(self, F=None, verbose=False, metodo='loglog') -> np.array:
+        """
+        Ajusta  F de acuerdo al método en el parámetros
+
+        - Parameters:
+            metodo : 'trf'     Se usa Levenberg-Marquadt para el ajuste
+                     'loglog'  Ajuste multilineal 
+                     'de'      Differential evolution
+            verbose : True or False 
+        """
+        if(F is None and self.f is not None):  # los datos fueron cargados durante la instancia
+            F = self.f['vals'].values.reshape(self.N,)
+        elif(F is not None):                   # los datos los definimos de una lista
+            self.N = len(F)
+        N = self.N    
+        R = arange(1,self.N+1)
+        # r = arange(1,(N+1), 0.01)
+        # lgR, lgF = log10(R), log10(F)
+
+        # elegimos el método de regresión
+        # ya sea no lineal lm
+        # o transformación loglog
+        assert metodo in ['loglog','trf', 'de']
+
+        if(metodo=='trf'):
+            x0 = self.__genera_x0(F, verbose=verbose)
+            if(verbose):
+                print(f"Punto inicial {x0}")
+    
+            def modelo_lm(r, alfa, beta, A, N):
+                return self.germibeta(r, alfa, beta, A, N)
+            
+            
+            popt, pcov = curve_fit( modelo_lm, R, F, p0=x0, 
+                                    sigma=F,
+                                    bounds=(0, np.inf),
+                                    method='trf')
+            F_pred = modelo_lm(R, *popt)
+            # r2 = r2_score(F, F_pred)
+            r2 = self.__r2_score(F, F_pred)
+
+    
+            self.__params = array([popt[0], popt[1], popt[2], self.N, r2])
+    
+            if(verbose):
+                print("Parámetros óptimos")
+                print(f"{sqrt(diag(pcov))}")
+                print(f"R2 {r2:.5f}")
+            
+            
+        elif(metodo=='loglog'):
+            
+            # hacemos transformación log-log
+            modelo_loglog = lambda r, logA, alfa, beta: logA + beta*np.log(self.N + 1 - r) - alfa*np.log(r)
+            
+            # assume rdata, ydata, N already defined and ydata > 0
+            x1 = log(N + 1 - R)
+            x2 = log(R)
+            Y  = log(F)
+
+            # generamos la matriz de diseño X
+            X = np.column_stack([np.ones_like(x1), x1, x2])
+
+            # hacemos la regresión
+            beta, *_ = np.linalg.lstsq(X, Y, rcond=None)
+            beta0, beta1, beta2 = beta
+
+            # ajustamos los valores para regresarlos
+            A = np.exp(beta0)
+            b = beta1
+            a = -beta2
+            F_pred = modelo_loglog(R, np.log(A), a, b)
+        
+            # r2 = r2_score(F, modelo_loglog(R, np.log(A), a, b))
+            r2 = self.__r2_score(np.log(F), F_pred)
+
+            self.__params = [a, b, A, self.N, r2]
+
+        elif(metodo=='de'):
+            modelo_loglog = lambda r, logA, alfa, beta: logA + beta*np.log(self.N + 1 - r) - alfa*np.log(r)
+
+            def objective(params, r, F, N):
+                logA, a, b = params
+                F_pred_log = log_model(r, logA, a, b, N)
+                residuals = np.log(F) - F_pred_log
+                return np.sum(residuals**2)   # SSR in log space
+
+            bounds = [(0, 500), (-5, 5), (-5, 5)]
+
+            result = differential_evolution(
+                objective,
+                bounds,
+                args=(R, F, N),
+                tol=1e-6,
+                polish=True
+            )
+            logA_opt, a_opt, b_opt = result.x
+            A_opt = np.exp(logA_opt)
+            
+        return self.__params
+            
+
+    @property 
+    def params(self):
+        return self.__params
+
+
+
+def germibeta(r, alfa, beta, A, N, r2 ):
+    num = power((N+1-r),beta)
+    den = power(r,alfa)
+    return A*num/den
+
+
+def graf_datos(y:list, arr:array, titulos:dict, 
+               nomf=None, ax=None, **kwargs) -> None:
+    """
+    Grafica los datos empiricos en y y el ajuste representado
+    en el parámetro arr. 
+    Le pone titulo y guarda en archivo
+
+    - Params
+    y list de datos
+    arr array con parametros
+    titulo str con titulo
+    nomf str de archivo de salida
+
+    -Returns 
+    None
+
+    """
+    a,b,A,N,r2 = arr
+    N = int(N)
+    R = arange(1,N+1,0.05)
+
+    # reacomodamos el arreglo
+    params = [R,a,b,A,N]
+    Y = germibeta(R, *arr)
+
+    if(titulos is not None):
+        titulo = titulos['titulo']
+        eje_x  = titulos['eje_x']
+        eje_y  = titulos['eje_y']
+
+    nf = False
+    if ax is None:
+        assert not (nomf is None)
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(111)
+        nf = True
+    
+    Vy = max(Y) + max(Y)*0.1
+    vy = min(y) - min(y)*0.2
+    ax.semilogy(range(1,N+1),y,'.', R,Y)
+    ax.set_ylim([vy, Vy])
+    ax.set_xlabel(eje_x)
+    ax.set_ylabel(eje_y)
+    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
+    
+    if(nf):
+        plt.savefig(nomf)
+        plt.close(fig)
+        del(fig)
+
+
+def uso():
+    print("Ejemplo\npython germibeta -i archivo -c columna -m lineas -v|--verbose")
+
+def ejemplo():
+    F = [int(x.strip()) for x in open('fbc_brown.csv').readlines()]
+    arr, _, r2 = ajuste(F, verbose=True)
+    params = array([arr[0], arr[1], arr[2], len(F), r2])
+    graf_datos(F, params, {'titulo':'FBC ejemplo', 'eje_x': 'Rank', 'eje_y':'\log(f)'},'fbc')
+
+def ejemplo_clase():
+    gg = Germibeta()
+    gg.carga_archivo('./fbc_brown.csv')
+    gg.ajuste()
+    params = gg.params
+    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown noise',
+                                            'eje_x' : 'Rango', 
+                                            'eje_y' : r'$\log(f)$'},'fbc_o.png')
+
+
+
+
+
+if __name__ =='__main__':
+    try:
+        args = sys.argv[1:]
+        opts, args = getopt.getopt( args, "i:vc:m:s:", ["input=","muestreo=","verbose","columna=","sep="] )
+    except getopt.GetoptError:
+        print("Erorr en los parámetros")
+        uso()
+
+    verbose = False
+    columna  = -1
+    umbral   = 1
+    sep      = ","
+    for opt,arg in opts:
+        if opt in ('-i','--input'):
+            archivo = arg
+            if(os.path.exists(archivo)):
+                print(f"Usando {archivo}")
+            else:
+                print("No se encuentra el archivo")
+        elif opt in ('-v','--verbose'):
+            verbose = True
+        elif opt in ('-c','--columna'):
+            if(int(arg)>0): columna = int(arg)-1
+        elif opt in ('-m','--muestreo'):
+            umbral = float(arg)
+        elif opt in ('-s','--sep'):
+            sep = arg
+
+    if(verbose):
+        print("Usando")
+        print("Archivo {0}".format(archivo))
+        if(columna != -1):
+            print("Usando columna {0} de archivo {1}".format(str(columna),archivo))
+        else:
+            print("Usando columna 1 de archivo {0}".format(archivo))
+        if(umbral != 1):
+            print("Porcentaje de muestreo {0}".format(umbral))
+    f = loadtxt(archivo,delimiter=sep)
+    N = len(f)
+
+    if verbose: print("Líneas leídas {0}".format(N))
+    if(columna==0):
+        popt, pcov, r2 = ajuste(f)
+    elif(columna>0):
+        popt, pcov, r2 = ajuste(f[:,columna])
+    alfa, beta = popt[:2]
+    A = popt[2]
+    error = sqrt(diag(pcov))
+    if(verbose):
+        print("Resultado")
+        print("Archivo {0} con {1} rangos".format(archivo,N))
+        print("A {0}".format(A))
+        print("alfa, beta : ({0},{1})".format(alfa,beta))
+        print("R2 {0}".format(r2))
+        print("Error {0}".format(error))
+    else:
+        V = ','.join(map(str,[ archivo, A, alfa, beta, N, r2]))
+        print(V)
+
+
+>>>>>>> 16e07794f5085099cd5c4be1d2c146e15cf927cc
