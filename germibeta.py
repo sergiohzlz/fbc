@@ -268,7 +268,9 @@ def graf_datos(y:list, arr:array, titulos:dict,
         
     Vy = max(Y) + max(Y)*0.1
     vy = min(y) - min(y)*0.2
-    ax.semilogy(range(1,N+1),y,'.', R,Y)
+    ax.scatter(range(1,N+1),y, alpha=0.4)
+    ax.plot(R,Y, 'b')
+    ax.set_yscale('log')
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
@@ -295,9 +297,10 @@ def ejemplo_clase():
     gg.carga_archivo('./fbc_brown.csv')
     gg.ajuste()
     params = gg.params
-    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown noise',
+    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown dataset',
                                             'eje_x' : 'Rango', 
-                                            'eje_y' : r'$\log(f)$'},'fbc_o.png')
+                                            'eje_y' : r'$\log(f)$'},
+                                            nomf='fbc_o.png', dpi=600)
 
 
 
