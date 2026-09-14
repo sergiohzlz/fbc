@@ -250,15 +250,29 @@ def graf_datos(y:list, arr:array, titulos:dict,
         ax = fig.add_subplot(111)
         nf = True
     
-    alpha, beta = (r'\alpha', r'\beta') if ab else ('a', 'b')
+    alpha, beta = (r'\alpha', r'\beta') 
+    coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
+    # Hay que determinar como se pone el subtitulo
+    if(ab==False):
+        alpha, beta = ('a', 'b')
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
+    elif(ab=='short_l'):
+        alpha, beta = ('a', 'b')
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f})'
+    elif(ab=='short_g'):
+        alpha, beta =  (r'\alpha', r'\beta') 
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f})'
+    else:
+        raise Exception("Parametro no reconocido")
+ 
+        
     Vy = max(Y) + max(Y)*0.1
     vy = min(y) - min(y)*0.2
     ax.semilogy(range(1,N+1),y,'.', R,Y)
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
-    coefs_str = rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
-    ax.set_title(titulo + '\n' + f"{coefs_str}", fontsize=12)
+    ax.set_title(titulo + f"{coefs_str}", fontsize=12)
     
     if(nf):
         print("Salvando archivo")
