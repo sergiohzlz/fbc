@@ -214,7 +214,7 @@ def germibeta(r, alfa, beta, A, N, r2 ):
 
 
 def graf_datos(y:list, arr:array, titulos:dict, 
-               nomf=None, ax=None, **kwargs) -> None:
+               nomf=None, ax=None, ab=True, **kwargs) -> None:
     """
     Grafica los datos empiricos en y y el ajuste representado
     en el parámetro arr. 
@@ -250,15 +250,34 @@ def graf_datos(y:list, arr:array, titulos:dict,
         ax = fig.add_subplot(111)
         nf = True
     
+    alpha, beta = (r'\alpha', r'\beta') 
+    coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
+    # Hay que determinar como se pone el subtitulo
+    if(ab==False):
+        alpha, beta = ('a', 'b')
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f}) N={N} $r^2$={r2:.4f}'
+    elif(ab=='short_l'):
+        alpha, beta = ('a', 'b')
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f})'
+    elif(ab=='short_g'):
+        alpha, beta =  (r'\alpha', r'\beta') 
+        coefs_str = '\n' + rf'$({alpha},{beta})$=({a:.2f},{b:.2f})'
+    else:
+        raise Exception("Parametro no reconocido")
+ 
+        
     Vy = max(Y) + max(Y)*0.1
     vy = min(y) - min(y)*0.2
-    ax.semilogy(range(1,N+1),y,'.', R,Y)
+    ax.scatter(range(1,N+1),y, alpha=0.4)
+    ax.plot(R,Y, 'b')
+    ax.set_yscale('log')
     ax.set_ylim([vy, Vy])
     ax.set_xlabel(eje_x)
     ax.set_ylabel(eje_y)
-    ax.set_title(titulo + '\n' + r"$(\alpha,\beta)$=({0:.2f},{1:.2f}) N={2} $r^2$={3:.4f}".format(a,b,N,r2), fontsize=12)
+    ax.set_title(titulo + f"{coefs_str}", fontsize=12)
     
     if(nf):
+        print("Salvando archivo")
         plt.savefig(nomf)
         plt.close(fig)
         del(fig)
@@ -278,9 +297,10 @@ def ejemplo_clase():
     gg.carga_archivo('./fbc_brown.csv')
     gg.ajuste()
     params = gg.params
-    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown noise',
+    graf_datos(gg.f['vals'].array, params, {'titulo' : 'Brown dataset',
                                             'eje_x' : 'Rango', 
-                                            'eje_y' : r'$\log(f)$'},'fbc_o.png')
+                                            'eje_y' : r'$\log(f)$'},
+                                            nomf='fbc_o.png', dpi=600)
 
 
 
