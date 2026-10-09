@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
-class Germibeta(object):
+class DGBD(object):
 
     def carga_archivo(self, archivo, sep=",", header=None):
         """
@@ -38,25 +38,23 @@ class Germibeta(object):
             self.f = pd.read_csv(archivo, delimiter=sep, header=None, names=['vals'])
         self.N = len(self.f)
 
-    def germibeta(self, 
+    def BC_model(self, 
                   r : np.array,
                   alfa : float, 
                   beta : float, 
                   A, 
                   N) -> np.array:
         """ 
-        Fase final para hacer el cálculo de  la 
-        distribución usando los valores en los parámetros
-
+        
         Parameters:
-        r       : arreglo de enteros
-        alfa    : exponente del denominador
-        beta    : exponente del numerador
-        A       : Constante de normalización
-        N       : entero con la cantidad de rangos
-        base=10
+        r       : array of ints as ranges
+        alfa    : Alpha denomintaor 
+        beta    : Beta denominator
+        A       : Normalizing constant
+        N       : Number or ranges
+        
         Returns:
-        Lista de valores con los valores asignados en el parámetro
+        Fitted values 
         """
         fac = A
         num = power((N+1-r),beta)
@@ -102,7 +100,35 @@ class Germibeta(object):
 
         return r2
 
-    def ajuste(self, F=None, verbose=False, metodo='loglog') -> np.array:
+
+    def BC_param(self, F=None, verbose=False, method='loglog') -> np.array:
+        result = self.__ajuste(F=F, verbose=verbose, metodo=method)
+        return result
+
+    def BC_report(self):
+        """
+        Rank the Abundance from a File or Data Frame
+        
+        Sorts the df_abundance dataframe by the given column argument.
+        """
+        ...
+    def BC_report(self):
+        """
+        Summarize the Modeled DGB Distribution
+        """
+        ...
+
+    def BC_multiple(self):
+        """
+        Create Plots and Reports for N Columns
+        
+        Basic wrapper for BC_plot and BC_report intended to be used for large data frames.
+        """
+        ...
+
+
+
+    def __ajuste(self, F=None, verbose=False, metodo='loglog') -> np.array:
         """
         Ajusta  F de acuerdo al método en el parámetros
 
@@ -130,7 +156,7 @@ class Germibeta(object):
                 print(f"Punto inicial {x0}")
     
             def modelo_lm(r, alfa, beta, A, N):
-                return self.germibeta(r, alfa, beta, A, N)
+                return self.bc_function(r, alfa, beta, A, N)
             
             
             popt, pcov = curve_fit( modelo_lm, R, F, p0=x0, 
@@ -214,7 +240,7 @@ def germibeta(r, alfa, beta, A, N, r2 ):
     return A*num/den
 
 
-def graf_datos(y:list, arr:array, titulos:dict, 
+def BC_plot(y:list, arr:array, titulos:dict, 
                nomf=None, ax=None, ab=True, **kwargs) -> None:
     """
     Grafica los datos empiricos en y y el ajuste representado
